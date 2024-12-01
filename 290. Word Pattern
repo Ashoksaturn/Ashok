@@ -1,0 +1,115 @@
+#include <stdlib.h>
+
+int word_len(char* s, int start) {
+    int i = start;
+
+    // while the next char is not a space or null
+    while (s[i] != ' ' && s[i])
+        i++;
+
+    return i - start;
+}
+
+// copy from source to dest
+// len is the number of characters to be copied
+// start is the starting index of the word in source
+void wordcpy(char *dest, char *source, int len, int start) {
+    for (int i = 0; i < len; i++) {
+        dest[i] = source[i + start];
+    }
+    dest[len] = '\0';
+}
+
+// match each letter, similar to strncmp in string.h but we add in the starting value of the first char in source (s)
+bool wordcmp(char *value, char *source, int len, int start) {
+    int i = 0;
+    int j = start;
+
+    while (value[i] != NULL && source[j] != NULL) {
+        if (value[i] != source[j])
+            return false;
+        i++;
+        j++;
+    }
+
+    // if last char in value is not null
+    if (value[i] || !(source[j] == ' ' || source[j] == '\0'))
+        return false;
+
+    // default case, true
+    return true;
+}
+
+bool find_duplicates(char **map, int entries) {
+    int next = 0;
+    // sqash the entries down, we don't care about key anymore
+    for (int i = 0; i < 26; i++) {
+        // if lowest bit set, we have an entry
+        if (entries & 1) {
+            // only adjust if not already in place
+            if (i != next) {
+                map[next] = map[i];
+                map[i] = NULL;
+            }
+            // increment next either way
+            next++;
+        }
+
+        entries = entries>>1;
+    }
+
+    for (int i = 0; i < next; i++) {
+        for (int ii = i + 1; ii < next; ii++) {
+            if (i != ii) {
+                if (wordcmp(map[i], map[ii],0, 0))
+                    return false;
+            }
+        }
+    }
+
+    return true;
+}
+
+#define OFFSET 97 // ascii values for 'a'
+bool wordPattern(char* pattern, char* s) {
+    char *map[26];
+
+    // maybe overkill but we are going to store marked entries with a bitmask
+    int i = 0, j = 0, len, key, entries = 0;
+
+    // as long as neither string in at null terminator
+    // find length of next word
+    // find the key value, equal to char in pattern - 'a'
+    // if that value alreadu exists in map, verify the word matches
+    // if it does not exist, allocate memore and copy to map[key]
+    // set the entry via bitmask
+    while (pattern[i] && s[j]) {
+        len = word_len(s, j);
+        key = pattern[i] - OFFSET;
+        if (map[key]) {
+            // compare to existing value
+            if (!wordcmp(map[key], s, len, j))
+                return false;
+        } else {
+            // malloc enough space for the word plus null
+            map[key] = malloc((len * sizeof(char)) + 1);
+            wordcpy(map[key], s, len, j);
+            entries = entries | (1<<key);
+        }
+
+        i++;
+        
+        // check if there is another word
+        if (s[j + len])
+            j += len + 1;
+        else
+            j += len;
+    }
+
+    // if last char in pattern or source is not null we don't have a matching count
+    if (pattern[i] || s[j])
+        return false;
+
+    // last step is to check the map to make sure there are no duplicates
+    return find_duplicates(map, entries);
+}
